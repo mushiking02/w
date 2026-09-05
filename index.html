@@ -1,1 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>苦手単語帳</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --danger: #ef4444;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #1f2937;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1rem;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      background: var(--card);
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border: 1px solid #ccc;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.active, button.primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    button.danger {
+      background: var(--danger);
+      color: #fff;
+      border-color: var(--danger);
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+    }
+    .section { display: none; }
+    .section.active { display: block; }
+    form { display: flex; flex-direction: column; gap: 0.8rem; }
+    input, select { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+    .search-box {
+      margin-bottom: 1rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .item-card {
+      border: 1px solid #e5e7eb;
+      padding: 0.8rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      background: #e0e7ff;
+      color: var(--primary);
+      margin-right: 0.3rem;
+    }
+    .quiz-box { text-align: center; margin: 2rem 0; }
+    .quiz-term { font-size: 2rem; font-weight: bold; margin-bottom: 1rem; }
+    .actions { display: flex; align-items: center; gap: 0.5rem; }
+    .setup-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
 
+<div class="container">
+  <h1>苦手単語帳</h1>
+  
+  <nav>
+    <button onclick="showTab('register')" id="btn-register" class="active">登録</button>
+    <button onclick="showTab('list')" id="btn-list">一覧</button>
+    <button onclick="showTab('quiz')" id="btn-quiz">テスト</button>
+    <button onclick="showTab('history')" id="btn-history">履歴</button>
+  </nav>
+
+  <!-- 登録画面 -->
+  <div id="sec-register" class="section active">
+    <h2>新規登録</h2>
+    <form id="add-form" onsubmit="addWord(event)">
+      <select id="type">
+        <option value="word">単語</option>
+        <option value="idiom">熟語</option>
+      </select>
+      <input type="text" id="term" placeholder="単語/熟語を入力" required>
+      <input type="text" id="meaning" placeholder="意味を入力" required>
+      <button type="submit" class="primary">登録する</button>
+    </form>
+  </div>
+
+  <!-- 一覧画面（辞書機能） -->
+  <div id="sec-list" class="section">
+    <h2>登録一覧（辞書機能）</h2>
+    <input type="text" id="search-input" class="search-box" placeholder="🔍 単語・熟語・意味で検索..." oninput="renderList(currentFilter)">
+    
+    <div style="margin-bottom: 1rem;">
+      <button onclick="renderList('all')">すべて</button>
+      <button onclick="renderList('word')">単語のみ</button>
+      <button onclick="renderList('idiom')">熟語のみ</button>
+    </div>
+    <div id="item-list"></div>
+  </div>
+
+  <!-- テスト画面 -->
+  <div id="sec-quiz" class="section">
+    <h2>テスト設定</h2>
+    <div id="quiz-setup" class="setup-group">
+      <div>
+        <label>出題対象:</label>
+        <select id="quiz-type" style="width: 100%; margin-top: 0.3rem;">
+          <option value="all">すべて</option>
+          <option value="word">単語のみ</option>
+          <option value="idiom">熟語のみ</option>
+        </select>
+      </div>
+      <div>
+        <label>問題数:</label>
+        <select id="quiz-count" style="width: 100%; margin-top: 0.3rem;">
+          <option value="10">10題</option>
+          <option value="50">50題</option>
+          <option value="100">100題</option>
+        </select>
+      </div>
+      <button onclick="startQuiz()" class="primary">テストスタート</button>
+    </div>
+
+    <div id="quiz-area" class="quiz-box" style="display:none;">
+      <div id="quiz-progress"></div>
+      <div id="quiz-term" class="quiz-term"></div>
+      <div id="quiz-answer" style="display:none; margin-bottom: 1rem;" class="quiz-term"></div>
+      <button id="btn-show-ans" onclick="showAnswer()">意味を表示</button>
+      <div id="quiz-actions" style="display:none; margin-top: 1rem;">
+        <button onclick="handleResult(true)" class="primary">正解</button>
+        <button onclick="handleResult(false)">不正解</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 履歴画面 -->
+  <div id="sec-history" class="section">
+    <h2>登録解除済み（履歴）</h2>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<script>
+  let data = JSON.parse(localStorage.getItem('vocab_data')) || [];
+  let currentQuiz = [];
+  let quizIndex = 0;
+  let currentFilter = 'all';
+
+  function saveData() {
+    localStorage.setItem('vocab_data', JSON.stringify(data));
+  }
+
+  function showTab(tab) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(`sec-${tab}`).classList.add('active');
+    document.getElementById(`btn-${tab}`).classList.add('active');
+    
+    if (tab === 'list') renderList(currentFilter);
+    if (tab === 'history') renderHistory();
+  }
+
+  function addWord(e) {
+    e.preventDefault();
+    const item = {
+      id: Date.now(),
+      type: document.getElementById('type').value,
+      term: document.getElementById('term').value,
+      meaning: document.getElementById('meaning').value,
+      correctCount: 0,
+      attemptCount: 0,
+      consecutiveCorrect: 0,
+      isArchived: false
+    };
+    data.push(item);
+    saveData();
+    document.getElementById('term').value = '';
+    document.getElementById('meaning').value = '';
+    alert('登録しました');
+  }
+
+  function deleteItem(id) {
+    if (confirm('本当に削除しますか？（履歴からも完全に消去されます）')) {
+      data = data.filter(item => item.id !== id);
+      saveData();
+      const activeSection = document.querySelector('.section.active').id;
+      if (activeSection === 'sec-list') renderList(currentFilter);
+      if (activeSection === 'sec-history') renderHistory();
+    }
+  }
+
+  function calcRateNum(correct, attempt) {
+    if (attempt === 0) return 0; // 未回答は正答率0%
+    return (correct / attempt);
+  }
+
+  function calcRateText(correct, attempt) {
+    if (attempt === 0) return '未回答';
+    return Math.round((correct / attempt) * 100) + '%';
+  }
+
+  function renderList(filter) {
+    currentFilter = filter;
+    const listEl = document.getElementById('item-list');
+    const keyword = document.getElementById('search-input').value.toLowerCase().trim();
+    listEl.innerHTML = '';
+
+    const filtered = data.filter(item => {
+      const matchType = !item.isArchived && (filter === 'all' || item.type === filter);
+      const matchKeyword = item.term.toLowerCase().includes(keyword) || item.meaning.toLowerCase().includes(keyword);
+      return matchType && matchKeyword;
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<p>該当する項目がありません</p>';
+      return;
+    }
+
+    filtered.forEach(item => {
+      listEl.innerHTML += `
+        <div class="item-card">
+          <div>
+            <span class="badge">${item.type === 'word' ? '単語' : '熟語'}</span>
+            <strong>${item.term}</strong> : ${item.meaning}
+          </div>
+          <div class="actions">
+            <span style="font-size:0.85rem;">正答率: ${calcRateText(item.correctCount, item.attemptCount)} (${item.consecutiveCorrect}/10)</span>
+            <button onclick="deleteItem(${item.id})" class="danger">削除</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  function renderHistory() {
+    const listEl = document.getElementById('history-list');
+    listEl.innerHTML = '';
+    const archived = data.filter(item => item.isArchived);
+
+    if (archived.length === 0) {
+      listEl.innerHTML = '<p>履歴はありません</p>';
+      return;
+    }
+
+    archived.forEach(item => {
+      listEl.innerHTML += `
+        <div class="item-card" style="opacity: 0.8;">
+          <div>
+            <span class="badge">${item.type === 'word' ? '単語' : '熟語'}</span>
+            <strong>${item.term}</strong> : ${item.meaning}
+          </div>
+          <div class="actions">
+            <span style="font-size:0.85rem;">正答率: ${calcRateText(item.correctCount, item.attemptCount)}</span>
+            <button onclick="deleteItem(${item.id})" class="danger">削除</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  function startQuiz() {
+    const type = document.getElementById('quiz-type').value;
+    const targetCount = parseInt(document.getElementById('quiz-count').value, 10);
+    const available = data.filter(item => !item.isArchived && (type === 'all' || item.type === type));
+
+    if (available.length === 0) {
+      alert('出題できるデータがありません');
+      return;
+    }
+
+    // 正答率順にソート（低い順）
+    const sorted = [...available].sort((a, b) => {
+      return calcRateNum(a.correctCount, a.attemptCount) - calcRateNum(b.correctCount, b.attemptCount);
+    });
+
+    // 出題数の計算（8割を苦手問題、2割を得意問題から抽出）
+    const lowCount = Math.ceil(targetCount * 0.8);
+    const highCount = targetCount - lowCount;
+
+    // 苦手問題（正答率が低い前半分）と得意問題（後半分）に分類
+    const halfIndex = Math.ceil(sorted.length / 2);
+    const lowPool = sorted.slice(0, halfIndex);
+    const highPool = sorted.slice(halfIndex);
+
+    // 苦手枠・得意枠からそれぞれランダム抽出
+    const selectedLow = [...lowPool].sort(() => 0.5 - Math.random()).slice(0, lowCount);
+    let selectedHigh = [...highPool].sort(() => 0.5 - Math.random()).slice(0, highCount);
+
+    // 得意枠のデータ数が足りない場合は、全体から補填
+    const currentSelected = [...selectedLow, ...selectedHigh];
+    if (currentSelected.length < targetCount) {
+      const remaining = sorted.filter(item => !currentSelected.includes(item));
+      const extra = [...remaining].sort(() => 0.5 - Math.random()).slice(0, targetCount - currentSelected.length);
+      currentQuiz = [...currentSelected, ...extra];
+    } else {
+      currentQuiz = currentSelected;
+    }
+
+    // 最後に全体をシャッフル
+    currentQuiz.sort(() => 0.5 - Math.random());
+    quizIndex = 0;
+
+    document.getElementById('quiz-setup').style.display = 'none';
+    document.getElementById('quiz-area').style.display = 'block';
+    nextQuestion();
+  }
+
+  function nextQuestion() {
+    if (quizIndex >= currentQuiz.length) {
+      alert('テスト終了！お疲れ様でした。');
+      document.getElementById('quiz-setup').style.display = 'flex';
+      document.getElementById('quiz-area').style.display = 'none';
+      return;
+    }
+
+    const item = currentQuiz[quizIndex];
+    document.getElementById('quiz-progress').innerText = `${quizIndex + 1} / ${currentQuiz.length} 題目`;
+    document.getElementById('quiz-term').innerText = item.term;
+    document.getElementById('quiz-answer').innerText = item.meaning;
+    
+    document.getElementById('quiz-answer').style.display = 'none';
+    document.getElementById('btn-show-ans').style.display = 'inline-block';
+    document.getElementById('quiz-actions').style.display = 'none';
+  }
+
+  function showAnswer() {
+    document.getElementById('quiz-answer').style.display = 'block';
+    document.getElementById('btn-show-ans').style.display = 'none';
+    document.getElementById('quiz-actions').style.display = 'block';
+  }
+
+  function handleResult(isCorrect) {
+    const item = currentQuiz[quizIndex];
+    item.attemptCount++;
+
+    if (isCorrect) {
+      item.correctCount++;
+      item.consecutiveCorrect++;
+      if (item.consecutiveCorrect >= 10) {
+        item.isArchived = true;
+        alert(`「${item.term}」は10連続正解したため登録解除（アーカイブ）されました！`);
+      }
+    } else {
+      item.consecutiveCorrect = 0;
+    }
+
+    const globalIndex = data.findIndex(d => d.id === item.id);
+    if (globalIndex !== -1) data[globalIndex] = item;
+    saveData();
+
+    quizIndex++;
+    nextQuestion();
+  }
+</script>
+</body>
+</html>
